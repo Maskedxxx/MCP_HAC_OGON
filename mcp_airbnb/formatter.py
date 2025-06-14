@@ -29,9 +29,33 @@ class AirbnbFormatter:
         Returns:
             str: Отформатированная цена
         """
-        if "x" in price_text:
+        # Если есть информация о количестве ночей: "$87 x 5 nights: $433, "
+        if "x" in price_text and "nights:" in price_text:
+            try:
+                # Разделяем по двоеточию: ["$87 x 5 nights", " $433, "]
+                parts = price_text.split(":")
+                left_part = parts[0]  # "$87 x 5 nights"
+                right_part = parts[1].strip()  # "$433, "
+                
+                # Извлекаем цену за ночь
+                price_per_night = left_part.split("x")[0].strip().replace("$", "")
+                
+                # Извлекаем количество ночей
+                nights = left_part.split("x")[1].strip().split()[0]
+                
+                # Извлекаем общую цену
+                total_price = right_part.replace("$", "").replace(",", "").strip()
+                
+                return f"${price_per_night}/ночь (${total_price} за {nights} ночей)"
+            except:
+                # Если парсинг не удался, возвращаем как есть
+                return price_text
+        
+        # Если просто цена с множителем без указания общей суммы
+        elif "x" in price_text:
             price_per_night = price_text.split("x")[0].strip().replace("$", "")
             return f"${price_per_night}/ночь"
+        
         return price_text
     
     def extract_rating(self, rating_text: str) -> str:

@@ -5,6 +5,7 @@
 
 from airbnb_client import AirbnbMCPClient
 from formatter import AirbnbFormatter
+from listing_analyzer import ListingAnalyzer
 from ai_agent import AirbnbAIAgent
 from config import EMOJIS, MESSAGES
 
@@ -87,6 +88,39 @@ def interactive_search():
     finally:
         client.stop_server()
 
+def demo_listing_analysis():
+    """Демонстрация детального анализа жилья"""
+    client = AirbnbMCPClient()
+    formatter = AirbnbFormatter()
+    ai_agent = AirbnbAIAgent()
+    analyzer = ListingAnalyzer()
+    
+    try:
+        if not client.start_server():
+            return
+        
+        print("\n" + "="*70)
+        print("🧠 ДЕМОНСТРАЦИЯ ДЕТАЛЬНОГО ИИ АНАЛИЗА ЖИЛЬЯ")
+        print("="*70)
+        
+        # Выполним поиск для демонстрации
+        demo_request = "Киев в центре для двоих не дороже 80$ за ночь"
+        print(f"🔍 Ищем жилье: {demo_request}")
+        print("-" * 60)
+        
+        listings = ai_agent.search_with_ai(demo_request, client, formatter)
+        
+        if listings:
+            print(f"\n{EMOJIS['brain']} Теперь выберем вариант для детального анализа:")
+            analyzer.analyze_listing_full_cycle(listings, client, demo_request)
+        else:
+            print("❌ Не найдено жилья для демонстрации")
+        
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+    finally:
+        client.stop_server()
+
 
 def old_demo():
     """Старая демонстрация с фиксированными параметрами (для сравнения)"""
@@ -125,11 +159,12 @@ def main():
     print("\nВыберите режим:")
     print("1. 🤖 Демонстрация ИИ агента (автоматические тесты)")
     print("2. 💬 Интерактивный поиск (вводите свои запросы)")
-    print("3. 📊 Старый способ (для сравнения)")
-    print("4. 🚪 Выход")
+    print("3. 🧠 Детальный анализ жилья (с ИИ отчетами)")
+    print("4. 📊 Старый способ (для сравнения)")
+    print("5. 🚪 Выход")
     
     while True:
-        choice = input("\nВаш выбор (1-4): ").strip()
+        choice = input("\nВаш выбор (1-5): ").strip()
         
         if choice == "1":
             demo_ai_search()
@@ -138,13 +173,16 @@ def main():
             interactive_search()
             break
         elif choice == "3":
-            old_demo()
+            demo_listing_analysis()
             break
         elif choice == "4":
+            old_demo()
+            break
+        elif choice == "5":
             print("👋 До свидания!")
             break
         else:
-            print("❌ Неверный выбор. Введите число от 1 до 4")
+            print("❌ Неверный выбор. Введите число от 1 до 5")
 
 
 if __name__ == "__main__":

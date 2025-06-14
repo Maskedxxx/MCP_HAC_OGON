@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Файлы окружения
+.env
+.env.local
+.env*.local
+.env*.dev
+.env*.prod
+
+# Кеш
+*.pyc
+__pycache__/
+.cache/
+*.py[cod]
+
+# Логи
+*.log
+logs/
+
+# Виртуальные окружения Python
+venv/
+env/
+
+# Директории IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Локальные настройки и история
+.history/
+
+# Системные файлы
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Файлы сборки и зависимости
+node_modules/
+dist/
+build/
+*.egg-info/
+*.egg
+*.pyd
+*.pyo
