@@ -71,18 +71,9 @@ class TripAdvisorIntegrator:
     def process_additional_info_request(self, choice: str, listing_data: Dict) -> Optional[str]:
         """
         Обработка запроса дополнительной информации
-        
-        Args:
-            choice: Выбор пользователя
-            listing_data: Данные о жилье
-            
-        Returns:
-            Optional[str]: ИИ отчет или None для возврата/завершения
         """
         coordinates = listing_data["basic"]["coordinates"]
         lat, lon = coordinates["latitude"], coordinates["longitude"]
-        
-        # Извлекаем город из адреса или названия
         location_name = listing_data["basic"]["name"]
         
         if choice == "1":
@@ -90,11 +81,11 @@ class TripAdvisorIntegrator:
         elif choice == "2":
             return self._get_attractions_analysis(lat, lon, location_name)
         elif choice == "3":
-            return self._get_city_search_analysis(location_name)
+            return self._get_city_search_analysis(listing_data)  # ← Передаем весь listing_data
         elif choice == "4":
             return self._get_area_reviews_analysis(lat, lon, location_name)
         else:
-            return None  # Возврат/завершение
+            return None
     
     def _get_restaurants_analysis(self, lat: float, lon: float, location_name: str) -> str:
         """Анализ ресторанов рядом"""
@@ -126,10 +117,10 @@ class TripAdvisorIntegrator:
             f"рядом с жильем {location_name}"
         )
     
-    def _get_city_search_analysis(self, location_name: str) -> str:
-        """Анализ города по поиску"""
-        # Извлекаем название города из локации
-        city = self._extract_city_name(location_name)
+    def _get_city_search_analysis(self, listing_data: Dict) -> str:
+        """Анализ города по сохраненному названию"""
+        # Используем сохраненный город вместо извлечения из названия жилья
+        city = listing_data["basic"]["search_city"]
         print(f"{EMOJIS['search']} Ищу информацию о городе {city}...")
         
         city_info = self.tripadvisor_client.search_locations(f"{city} attractions")
@@ -274,14 +265,3 @@ class TripAdvisorIntegrator:
         
         return "\n\n".join(formatted)
     
-    def _extract_city_name(self, location_name: str) -> str:
-        """Извлечение названия города из названия жилья"""
-        # Простое извлечение - можно улучшить
-        common_words = ["apartment", "studio", "room", "house", "flat", "place", "home"]
-        words = location_name.lower().split()
-        
-        for word in words:
-            if word not in common_words and len(word) > 3:
-                return word.capitalize()
-        
-        return "Kiev"  # По умолчанию

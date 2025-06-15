@@ -38,8 +38,8 @@ def demo_ai_search():
             print(f"\n{EMOJIS['user']} ТЕСТ {i}: {user_request}")
             print("-" * 70)
             
-            # ИИ анализирует запрос и выполняет поиск
-            listings = ai_agent.search_with_ai(user_request, client, formatter)
+            # ИИ анализирует запрос и выполняет поиск (обновленный вызов)
+            listings, search_location = ai_agent.search_with_ai(user_request, client, formatter)
             
             if i < len(test_requests):  # Пауза между тестами кроме последнего
                 input(f"\n{EMOJIS['brain']} Нажмите Enter для следующего теста...")
@@ -80,7 +80,7 @@ def interactive_search():
                 break
             
             print("-" * 60)
-            listings = ai_agent.search_with_ai(user_request, client, formatter)
+            listings, search_location = ai_agent.search_with_ai(user_request, client, formatter)
             
             if listings:
                 # Предлагаем детальный анализ
@@ -88,7 +88,7 @@ def interactive_search():
                 choice = input().strip().lower()
                 
                 if choice in ['y', 'yes', 'да', 'д']:
-                    result = analyzer.analyze_listing_full_cycle(listings, client, user_request)
+                    result = analyzer.analyze_listing_full_cycle(listings, client, user_request, search_location)
                     
                     if result == 'exit':
                         break
@@ -122,11 +122,11 @@ def demo_listing_analysis():
         print(f"🔍 Ищем жилье: {demo_request}")
         print("-" * 60)
         
-        listings = ai_agent.search_with_ai(demo_request, client, formatter)
+        listings, search_location = ai_agent.search_with_ai(demo_request, client, formatter)
         
         if listings:
             print(f"\n{EMOJIS['brain']} Теперь выберем вариант для детального анализа:")
-            result = analyzer.analyze_listing_full_cycle(listings, client, demo_request)
+            result = analyzer.analyze_listing_full_cycle(listings, client, demo_request, search_location)
             
             if result == 'exit':
                 print(f"{EMOJIS['finish']} Демонстрация завершена!")

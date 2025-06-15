@@ -115,14 +115,12 @@ class AirbnbAIAgent:
             # Возвращаем базовые параметры если ИИ не сработал
             return AirbnbSearchParams(location="Kiev, Ukraine")
     
-    def search_with_ai(self, user_request: str, airbnb_client, formatter) -> None:
+    def search_with_ai(self, user_request: str, airbnb_client, formatter) -> tuple:
         """
         Полный цикл: получение запроса пользователя → ИИ анализ → поиск → отображение
         
-        Args:
-            user_request: Запрос пользователя
-            airbnb_client: Клиент для работы с Airbnb
-            formatter: Форматтер для вывода результатов
+        Returns:
+            tuple: (listings: List[Dict], search_location: str)
         """
         try:
             # Получаем описание функции поиска
@@ -136,17 +134,18 @@ class AirbnbAIAgent:
             self._display_extracted_params(search_params)
             
             # Выполняем поиск с извлеченными параметрами
-            search_dict = search_params.model_dump(exclude_none=True)  # Убираем None значения
+            search_dict = search_params.model_dump(exclude_none=True)
             listings = airbnb_client.search_accommodations(**search_dict)
             
             # Отображаем результаты
             formatter.display_search_results(listings)
             
-            return listings
+            # Возвращаем и listings и location для TripAdvisor
+            return listings, search_params.location
             
         except Exception as e:
             print(f"{EMOJIS['error']} {MESSAGES['search_failed'].format(error=e)}")
-            return []
+            return [], "Kiev, Ukraine"  # По умолчанию
     
     def _display_extracted_params(self, params: AirbnbSearchParams) -> None:
         """

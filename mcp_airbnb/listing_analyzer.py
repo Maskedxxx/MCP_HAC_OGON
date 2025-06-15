@@ -67,18 +67,22 @@ class ListingAnalyzer:
             except ValueError:
                 print(f"{EMOJIS['error']} Введите корректное число")
     
-    def get_full_listing_data(self, listing: Dict, airbnb_client) -> Dict[str, Any]:
+    def get_full_listing_data(self, listing: Dict, airbnb_client, search_location) -> Dict[str, Any]:
         """
         Получение полных данных о жилье
         
         Args:
             listing: Базовая информация о жилье
             airbnb_client: Клиент для работы с MCP сервером
+            search_location: Город поиска для TripAdvisor
             
         Returns:
-            Dict: Полная информация о жилье
+            Dict: Полная информация о жилье с сохраненным городом
         """
         print(f"{EMOJIS['details']} Получаю детальную информацию...")
+        
+        # Извлекаем город из search_location
+        search_city = self._extract_city_from_location(search_location)
         
         # Базовая информация из поиска
         basic_info = {
@@ -88,7 +92,8 @@ class ListingAnalyzer:
             "rating": listing.get("avgRatingA11yLabel", "Нет рейтинга"),
             "badges": listing.get("badges", ""),
             "price_info": listing["structuredDisplayPrice"]["explanationData"]["priceDetails"],
-            "coordinates": listing["demandStayListing"]["location"]["coordinate"]
+            "coordinates": listing["demandStayListing"]["location"]["coordinate"],
+            "search_city": search_city  # ← НОВОЕ ПОЛЕ!
         }
         
         # Детальная информация от MCP сервера
@@ -98,6 +103,20 @@ class ListingAnalyzer:
             "basic": basic_info,
             "details": details
         }
+        
+    def _extract_city_from_location(self, search_location: str) -> str:
+        """
+        Извлекает название города из location строки
+        
+        Args:
+            search_location: "Kiev, Ukraine" или "New York, NY, USA"
+            
+        Returns:
+            str: Название города
+        """
+        # Берем первую часть до запятой
+        city = search_location.split(',')[0].strip()
+        return city if city else "Kiev"
     
     def generate_ai_report(self, listing_data: Dict, user_request: str = "") -> str:
         """
@@ -152,7 +171,8 @@ class ListingAnalyzer:
         except Exception as e:
             return f"{EMOJIS['error']} Ошибка генерации отчета: {e}"
     
-    def analyze_listing_full_cycle(self, listings: List[Dict], airbnb_client, user_request: str = "") -> str:
+    def analyze_listing_full_cycle(self, listings: List[Dict], airbnb_client, 
+                             user_request: str = "", search_location: str = "Kiev, Ukraine") -> str:
         """
         Полный цикл анализа: выбор → получение данных → ИИ отчет → дополнительные опции
         
@@ -160,6 +180,7 @@ class ListingAnalyzer:
             listings: Список жилья для выбора
             airbnb_client: Клиент MCP сервера
             user_request: Оригинальный запрос пользователя
+            search_location: Город поиска из ИИ анализа
             
         Returns:
             str: Результат действия пользователя ('back', 'new_search', 'exit')
@@ -169,8 +190,8 @@ class ListingAnalyzer:
         if not selected_listing:
             return 'back'
         
-        # Шаг 2: Получение полных данных
-        full_data = self.get_full_listing_data(selected_listing, airbnb_client)
+        # Шаг 2: Получение полных данных (передаем search_location)
+        full_data = self.get_full_listing_data(selected_listing, airbnb_client, search_location)
         
         # Шаг 3: ИИ анализ и отчет
         report = self.generate_ai_report(full_data, user_request)
@@ -233,7 +254,7 @@ class ListingAnalyzer:
             str: Результат действия
         """
         from tripadvisor_integrator import TripAdvisorIntegrator
-        
+    
         integrator = TripAdvisorIntegrator()
         
         try:
@@ -249,11 +270,11 @@ class ListingAnalyzer:
                 if choice == "0":  # Завершить
                     return 'exit'
                 elif choice == "5":  # Выбрать другое жилье
-                    return self.analyze_listing_full_cycle(listings, airbnb_client, user_request)
+                    return self.analyze_listing_full_cycle(listings, airbnb_client, user_request, listing_data["basic"]["search_city"])
                 elif choice == "6":  # Новый поиск
                     return 'new_search'
                 else:
-                    # Получение дополнительной информации
+                    # Получение дополнительной информации (БЕЗ ИЗМЕНЕНИЙ)
                     analysis = integrator.process_additional_info_request(choice, listing_data)
                     
                     if analysis:
