@@ -59,6 +59,7 @@ def interactive_search():
     client = AirbnbMCPClient()
     formatter = AirbnbFormatter()
     ai_agent = AirbnbAIAgent()
+    analyzer = ListingAnalyzer()
     
     try:
         if not client.start_server():
@@ -79,7 +80,20 @@ def interactive_search():
                 break
             
             print("-" * 60)
-            ai_agent.search_with_ai(user_request, client, formatter)
+            listings = ai_agent.search_with_ai(user_request, client, formatter)
+            
+            if listings:
+                # Предлагаем детальный анализ
+                print(f"\n{EMOJIS['question']} Хотите детальный ИИ анализ какого-то варианта? (y/n): ", end="")
+                choice = input().strip().lower()
+                
+                if choice in ['y', 'yes', 'да', 'д']:
+                    result = analyzer.analyze_listing_full_cycle(listings, client, user_request)
+                    
+                    if result == 'exit':
+                        break
+                    elif result == 'new_search':
+                        continue  # Продолжаем цикл для нового поиска
             
     except KeyboardInterrupt:
         print("\n\n⏹️ Программа остановлена")
@@ -112,7 +126,12 @@ def demo_listing_analysis():
         
         if listings:
             print(f"\n{EMOJIS['brain']} Теперь выберем вариант для детального анализа:")
-            analyzer.analyze_listing_full_cycle(listings, client, demo_request)
+            result = analyzer.analyze_listing_full_cycle(listings, client, demo_request)
+            
+            if result == 'exit':
+                print(f"{EMOJIS['finish']} Демонстрация завершена!")
+            elif result == 'new_search':
+                print(f"{EMOJIS['search']} Пользователь выбрал новый поиск")
         else:
             print("❌ Не найдено жилья для демонстрации")
         

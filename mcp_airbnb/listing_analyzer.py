@@ -143,7 +143,7 @@ class ListingAnalyzer:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                max_tokens=15000,
+                max_tokens=1500,
                 temperature=0.3  # Немного креативности, но в основном факты
             )
             
@@ -152,19 +152,22 @@ class ListingAnalyzer:
         except Exception as e:
             return f"{EMOJIS['error']} Ошибка генерации отчета: {e}"
     
-    def analyze_listing_full_cycle(self, listings: List[Dict], airbnb_client, user_request: str = "") -> None:
+    def analyze_listing_full_cycle(self, listings: List[Dict], airbnb_client, user_request: str = "") -> str:
         """
-        Полный цикл анализа: выбор → получение данных → ИИ отчет
+        Полный цикл анализа: выбор → получение данных → ИИ отчет → дополнительные опции
         
         Args:
             listings: Список жилья для выбора
             airbnb_client: Клиент MCP сервера
             user_request: Оригинальный запрос пользователя
+            
+        Returns:
+            str: Результат действия пользователя ('back', 'new_search', 'exit')
         """
         # Шаг 1: Выбор жилья пользователем
         selected_listing = self.select_listing_interactive(listings)
         if not selected_listing:
-            return
+            return 'back'
         
         # Шаг 2: Получение полных данных
         full_data = self.get_full_listing_data(selected_listing, airbnb_client)
@@ -174,6 +177,98 @@ class ListingAnalyzer:
         
         # Шаг 4: Отображение результата
         self._display_ai_report(report)
+        
+        # Шаг 5: Предложение дополнительных опций
+        return self._handle_post_analysis_options(full_data, listings, airbnb_client, user_request)
+    
+    def _handle_post_analysis_options(self, listing_data: Dict, listings: List[Dict], 
+                                    airbnb_client, user_request: str) -> str:
+        """
+        Обработка опций после показа анализа жилья
+        
+        Args:
+            listing_data: Данные проанализированного жилья
+            listings: Полный список жилья для возврата к выбору
+            airbnb_client: Клиент Airbnb
+            user_request: Оригинальный запрос
+            
+        Returns:
+            str: Действие пользователя
+        """
+                
+        print(f"\n{EMOJIS['question']} Что дальше?")
+        print("1. Дополнительная информация о местности (TripAdvisor)")
+        print("2. Посмотреть детали другого варианта")
+        print("3. Вернуться к поиску")
+        print("0. Завершить")
+        
+        while True:
+            choice = input(f"\n{EMOJIS['select']} Ваш выбор (0-3): ").strip()
+            
+            if choice == "0":
+                return 'exit'
+            elif choice == "1":
+                # Запуск TripAdvisor интеграции
+                return self._handle_tripadvisor_integration(listing_data, listings, airbnb_client, user_request)
+            elif choice == "2":
+                # Возврат к выбору другого жилья
+                return self.analyze_listing_full_cycle(listings, airbnb_client, user_request)
+            elif choice == "3":
+                return 'new_search'
+            else:
+                print(f"{EMOJIS['error']} Введите число от 0 до 3")
+    
+    def _handle_tripadvisor_integration(self, listing_data: Dict, listings: List[Dict], 
+                                      airbnb_client, user_request: str) -> str:
+        """
+        Обработка интеграции с TripAdvisor
+        
+        Args:
+            listing_data: Данные о жилье
+            listings: Список всего жилья
+            airbnb_client: Клиент Airbnb
+            user_request: Оригинальный запрос
+            
+        Returns:
+            str: Результат действия
+        """
+        from tripadvisor_integrator import TripAdvisorIntegrator
+        
+        integrator = TripAdvisorIntegrator()
+        
+        try:
+            # Запуск TripAdvisor сервиса
+            if not integrator.start_tripadvisor_service():
+                print(f"{EMOJIS['error']} Не удалось запустить TripAdvisor сервис")
+                return self._handle_post_analysis_options(listing_data, listings, airbnb_client, user_request)
+            
+            # Цикл работы с TripAdvisor
+            while True:
+                choice = integrator.show_additional_options_menu(listing_data)
+                
+                if choice == "0":  # Завершить
+                    return 'exit'
+                elif choice == "5":  # Выбрать другое жилье
+                    return self.analyze_listing_full_cycle(listings, airbnb_client, user_request)
+                elif choice == "6":  # Новый поиск
+                    return 'new_search'
+                else:
+                    # Получение дополнительной информации
+                    analysis = integrator.process_additional_info_request(choice, listing_data)
+                    
+                    if analysis:
+                        print("\n" + "="*80)
+                        print(f"{EMOJIS['tripadvisor']} АНАЛИЗ ДАННЫХ TRIPADVISOR")
+                        print("="*80)
+                        print(analysis)
+                        print("="*80)
+                        
+                        input(f"\n{EMOJIS['question']} Нажмите Enter для продолжения...")
+                    else:
+                        print(f"{EMOJIS['error']} Не удалось получить информацию")
+        
+        finally:
+            integrator.stop_tripadvisor_service()
     
     def _display_ai_report(self, report: str) -> None:
         """
@@ -187,9 +282,3 @@ class ListingAnalyzer:
         print("="*80)
         print(report)
         print("="*80)
-        
-        # Предложение дальнейших действий
-        print(f"\n{EMOJIS['question']} Что дальше?")
-        print("1. Посмотреть детали другого варианта")
-        print("2. Вернуться к поиску")
-        print("3. Завершить")
