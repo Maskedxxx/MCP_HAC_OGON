@@ -23,6 +23,9 @@ logs/
 # Виртуальные окружения Python
 venv/
 env/
+.env
+.env.local
+.env*.local
 
 # Директории IDE
 .idea/
@@ -33,6 +36,7 @@ env/
 # Локальные настройки и история
 .history/
 shit_tests_and_debug/
+mcp_tripadvisor/
 v_1/
 v_2/
 

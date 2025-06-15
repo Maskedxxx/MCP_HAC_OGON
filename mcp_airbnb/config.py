@@ -1,7 +1,13 @@
 # config.py
 """
-Конфигурация для Airbnb MCP клиента
+Конфигурация для MCP клиента
 """
+
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения
+load_dotenv()
 
 # Настройки MCP сервера
 MCP_SERVER_COMMAND = ["npx", "-y", "@openbnb/mcp-server-airbnb", "--ignore-robots-txt"]
@@ -17,7 +23,7 @@ DEFAULT_SEARCH_PARAMS = {
 
 # Настройки TripAdvisor MCP сервера
 TRIPADVISOR_CONFIG = {
-    "api_key": "",  # Вставьте ваш ключ
+    "api_key": os.getenv("TRIPADVISOR_API_KEY", ""),
     "mcp_command": ["npx", "-y", "tripadvisor-mcp-node"],
     "default_language": "en",  # Язык для запросов
     "search_radius": 50000,  # Радиус поиска в метрах
@@ -26,6 +32,7 @@ TRIPADVISOR_CONFIG = {
 
 # Настройки OpenAI
 OPENAI_CONFIG = {
+    "api_key": os.getenv("OPENAI_API_KEY", ""),
     "model": "gpt-4.1",  # Используем более доступную модель
     "max_tokens": 3000,
     "temperature": 0 # Низкая температура для точности извлечения параметров

@@ -153,11 +153,11 @@ class TripAdvisorIntegrator:
         aggregated_reviews = []
         
         # Ищем ОТДЕЛЬНО достопримечательности и рестораны
-        print(f"   🎭 Ищу достопримечательности...")
+        print("   🎭 Ищу достопримечательности...")
         attractions = self.tripadvisor_client.search_nearby_locations(lat, lon, "attractions")
         print(f"   ✅ Найдено достопримечательностей: {len(attractions)}")
         
-        print(f"   🍽️ Ищу рестораны...")
+        print("   🍽️ Ищу рестораны...")
         restaurants = self.tripadvisor_client.search_nearby_locations(lat, lon, "restaurants")
         print(f"   ✅ Найдено ресторанов: {len(restaurants)}")
         
@@ -207,7 +207,7 @@ class TripAdvisorIntegrator:
                     if len(aggregated_reviews) >= target_reviews:
                         break
                 else:
-                    print(f"   ⚠️ Нет отзывов")
+                    print("   ⚠️ Нет отзывов")
                     
             except Exception as e:
                 print(f"   ❌ Ошибка: {e}")
