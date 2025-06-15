@@ -135,58 +135,121 @@ class TripAdvisorIntegrator:
         )
     
     def _get_area_reviews_analysis(self, lat: float, lon: float, location_name: str) -> str:
-        """Анализ отзывов о районе"""
-        print(f"{EMOJIS['review']} Ищу отзывы о районе...")
+        """Анализ отзывов о районе с нескольких мест"""
+        print(f"{EMOJIS['review']} Собираю отзывы о районе с разных мест...")
         
-        # Ищем места рядом и берем отзывы первого
-        nearby_places = self.tripadvisor_client.search_nearby_locations(lat, lon)
+        # Получаем отзывы с мест где они есть
+        aggregated_reviews = self._collect_reviews_from_available_places(lat, lon)
         
-        if not nearby_places:
-            return f"{EMOJIS['error']} Места для анализа отзывов не найдены"
-        
-        # Берем первое место и получаем его отзывы
-        first_place = nearby_places[0]
-        location_id = first_place.get("location_id")
-        
-        if not location_id:
-            return f"{EMOJIS['error']} Не удалось получить ID локации для отзывов"
-        
-        reviews = self.tripadvisor_client.get_location_reviews(location_id)
-        
-        if not reviews:
+        if not aggregated_reviews:
             return f"{EMOJIS['error']} Отзывы о районе не найдены"
         
-        return self._generate_reviews_analysis(reviews[:3], first_place["name"], location_name)
+        return self._generate_aggregated_reviews_analysis(aggregated_reviews, location_name)
     
-    def _generate_tripadvisor_analysis(self, data: List[Dict], data_type: str, context: str) -> str:
+    def _collect_reviews_from_available_places(self, lat: float, lon: float) -> List[Dict]:
         """
-        Генерация ИИ анализа данных TripAdvisor
+        Собираем отзывы только с ресторанов и достопримечательностей
+        """
+        aggregated_reviews = []
         
-        Args:
-            data: Данные от TripAdvisor
-            data_type: Тип данных (ресторанов, достопримечательностей и т.д.)
-            context: Контекст (название жилья/города)
+        # Ищем ОТДЕЛЬНО достопримечательности и рестораны
+        print(f"   🎭 Ищу достопримечательности...")
+        attractions = self.tripadvisor_client.search_nearby_locations(lat, lon, "attractions")
+        print(f"   ✅ Найдено достопримечательностей: {len(attractions)}")
+        
+        print(f"   🍽️ Ищу рестораны...")
+        restaurants = self.tripadvisor_client.search_nearby_locations(lat, lon, "restaurants")
+        print(f"   ✅ Найдено ресторанов: {len(restaurants)}")
+        
+        # Объединяем списки (сначала достопримечательности, потом рестораны)
+        target_places = attractions[:4] + restaurants[:4]  # По 4 каждого типа максимум
+        
+        if not target_places:
+            return []
+        
+        print(f"   📍 Отобрано мест для проверки: {len(target_places)}")
+        
+        # Собираем отзывы только с отобранных мест
+        places_with_reviews = 0
+        target_reviews = 12
+        
+        for i, place in enumerate(target_places, 1):
+            name = place.get('name', 'Unknown')
+            location_id = place.get('location_id')
             
-        Returns:
-            str: ИИ анализ
-        """
-        print(f"{EMOJIS['ai']} {MESSAGES['tripadvisor_analysis']}...")
+            # Определяем тип места для логирования
+            place_type = "🎭" if i <= len(attractions[:4]) else "🍽️"
+            
+            if not location_id:
+                continue
+            
+            print(f"   {place_type} Проверяю место {i}: {name[:30]}...")
+            
+            try:
+                reviews = self.tripadvisor_client.get_location_reviews(location_id)
+                review_count = len(reviews)
+                
+                if review_count > 0:
+                    places_with_reviews += 1
+                    print(f"   ✅ Найдено отзывов: {review_count}")
+                    
+                    # Берем до 3 отзывов с этого места
+                    reviews_to_take = min(3, review_count)
+                    for review in reviews[:reviews_to_take]:
+                        aggregated_reviews.append({
+                            **review,
+                            'source_place': name,
+                            'source_type': 'attraction' if i <= len(attractions[:4]) else 'restaurant',
+                            'source_location_id': location_id
+                        })
+                    
+                    # Останавливаемся если собрали достаточно отзывов
+                    if len(aggregated_reviews) >= target_reviews:
+                        break
+                else:
+                    print(f"   ⚠️ Нет отзывов")
+                    
+            except Exception as e:
+                print(f"   ❌ Ошибка: {e}")
         
-        system_prompt = f"""Ты эксперт по туризму. Проанализируй данные о {data_type} от TripAdvisor и создай краткий полезный отчет.
+        print(f"   📊 Итог: {len(aggregated_reviews)} отзывов с {places_with_reviews} мест")
+        return aggregated_reviews
+    
+    
+        
+    def _generate_aggregated_reviews_analysis(self, aggregated_reviews: List[Dict], context: str) -> str:
+        """
+        Генерация анализа района на основе собранных отзывов
+        """
+        print(f"{EMOJIS['ai']} Анализирую {len(aggregated_reviews)} отзывов о районе...")
+        
+        # Подготовка информации об источниках
+        sources_info = self._prepare_sources_summary(aggregated_reviews)
+        
+        system_prompt = """Ты эксперт по анализу отзывов туристов. Проанализируй отзывы с разных мест в районе и создай объективный отчет о районе в целом.
 
-Структура отчета:
-1. 🎯 КРАТКАЯ СВОДКА
-2. 📍 ТОП РЕКОМЕНДАЦИИ (3-5 лучших мест)
-3. 💡 ПОЛЕЗНЫЕ СОВЕТЫ
+    ВАЖНО: 
+    - Фокусируйся на информации О РАЙОНЕ (транспорт, безопасность, атмосфера, удобства)
+    - ИГНОРИРУЙ специфику конкретных мест (качество еды в ресторане, сервис отеля)
+    - Ищи общие упоминания о районе, его характеристиках
 
-Пиши живым языком, будь конкретным и полезным."""
+    Структура:
+    1. 🏘️ ОБЩЕЕ ВПЕЧАТЛЕНИЕ О РАЙОНЕ
+    2. ✅ ЧТО ХВАЛЯТ ТУРИСТЫ
+    3. ⚠️ НА ЧТО ЖАЛУЮТСЯ
+    4. 💡 РЕКОМЕНДАЦИИ ДЛЯ ГОСТЕЙ
 
-        user_prompt = f"""Проанализируй {data_type} {context}:
+    Создай объективный анализ района на основе ВСЕХ отзывов."""
 
-ДАННЫЕ TRIPADVISOR:
-{self._format_tripadvisor_data(data)}
+        user_prompt = f"""Анализ района жилья {context} на основе отзывов с разных мест:
 
-Создай краткий практичный отчет для туриста."""
+    ИСТОЧНИКИ ОТЗЫВОВ:
+    {sources_info}
+
+    ОТЗЫВЫ:
+    {self._format_aggregated_reviews_data(aggregated_reviews)}
+
+    Создай анализ РАЙОНА (не конкретных мест) на основе всех отзывов."""
 
         try:
             response = self.openai_client.chat.completions.create(
@@ -202,44 +265,41 @@ class TripAdvisorIntegrator:
             return response.choices[0].message.content
             
         except Exception as e:
-            return f"{EMOJIS['error']} Ошибка анализа TripAdvisor: {e}"
-    
-    def _generate_reviews_analysis(self, reviews: List[Dict], place_name: str, context: str) -> str:
-        """Генерация анализа отзывов"""
-        print(f"{EMOJIS['ai']} Анализирую отзывы о районе...")
-        
-        system_prompt = """Ты эксперт по анализу отзывов туристов. Проанализируй отзывы и создай краткий отчет о районе.
-
-Структура:
-1. 🏘️ ОБЩЕЕ ВПЕЧАТЛЕНИЕ О РАЙОНЕ
-2. ✅ ЧТО ХВАЛЯТ ТУРИСТЫ
-3. ⚠️ НА ЧТО ЖАЛУЮТСЯ
-4. 💡 РЕКОМЕНДАЦИИ ДЛЯ ГОСТЕЙ
-
-Будь объективным, выделяй ключевые моменты."""
-
-        user_prompt = f"""Отзывы о месте "{place_name}" в районе жилья {context}:
-
-ОТЗЫВЫ:
-{self._format_reviews_data(reviews)}
-
-Создай анализ района на основе этих отзывов."""
-
-        try:
-            response = self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_tokens=600,
-                temperature=0.3
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
             return f"{EMOJIS['error']} Ошибка анализа отзывов: {e}"
+
+    def _prepare_sources_summary(self, aggregated_reviews: List[Dict]) -> str:
+        """Подготовка сводки об источниках отзывов"""
+        sources = {}
+        for review in aggregated_reviews:
+            place_name = review.get('source_place', 'Unknown')
+            
+            if place_name not in sources:
+                sources[place_name] = 0
+            sources[place_name] += 1
+        
+        summary_lines = []
+        for place, count in sources.items():
+            summary_lines.append(f"• {place} - {count} отзыва")
+        
+        return "\n".join(summary_lines)
+
+    def _format_aggregated_reviews_data(self, aggregated_reviews: List[Dict]) -> str:
+        """Форматирование отзывов для ИИ анализа"""
+        formatted = []
+        for i, review in enumerate(aggregated_reviews, 1):
+            title = review.get("title", "Без заголовка")
+            text = review.get("text", "Нет текста")
+            rating = review.get("rating", "Нет рейтинга")
+            source_place = review.get("source_place", "Неизвестное место")
+            
+            formatted.append(f"Отзыв {i} (источник: {source_place}):\n"
+                            f"Заголовок: {title}\n"
+                            f"Рейтинг: {rating}\n"
+                            f"Текст: {text[:250]}...")
+        
+        return "\n\n".join(formatted)
+    
+    
     
     def _format_tripadvisor_data(self, data: List[Dict]) -> str:
         """Форматирование данных TripAdvisor для ИИ"""
