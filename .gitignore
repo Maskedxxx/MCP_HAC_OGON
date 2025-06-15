@@ -32,6 +32,9 @@ env/
 
 # Локальные настройки и история
 .history/
+shit_tests_and_debug/
+v_1/
+v_2/
 
 # Системные файлы
 Thumbs.db
