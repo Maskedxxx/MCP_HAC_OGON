@@ -21,7 +21,8 @@ class TripAdvisorTabs:
             title="Рестораны рядом",
             choice_code="1",
             emoji="🍽️",
-            description="Найти лучшие рестораны в окрестностях жилья"
+            description="Найти лучшие рестораны в окрестностях жилья",
+            report_type="restaurants"
         )
     
     def render_attractions_tab(self):
@@ -30,7 +31,8 @@ class TripAdvisorTabs:
             title="Достопримечательности рядом",
             choice_code="2", 
             emoji="🎭",
-            description="Найти интересные места и достопримечательности поблизости"
+            description="Найти интересные места и достопримечательности поблизости",
+            report_type="attractions"
         )
     
     def render_reviews_tab(self):
@@ -39,7 +41,8 @@ class TripAdvisorTabs:
             title="Отзывы о районе",
             choice_code="4",
             emoji="💬", 
-            description="Собрать отзывы туристов о районе расположения жилья"
+            description="Собрать отзывы туристов о районе расположения жилья",
+            report_type="reviews"
         )
     
     def render_city_tab(self):
@@ -48,10 +51,11 @@ class TripAdvisorTabs:
             title="Отчет о городе",
             choice_code="3",
             emoji="🌍",
-            description="Получить общую информацию о городе и его достопримечательностях"
+            description="Получить общую информацию о городе и его достопримечательностях",
+            report_type="city"
         )
     
-    def _render_tripadvisor_section(self, title: str, choice_code: str, emoji: str, description: str):
+    def _render_tripadvisor_section(self, title: str, choice_code: str, emoji: str, description: str, report_type: str):
         """
         Универсальный рендер секции TripAdvisor
         
@@ -60,6 +64,7 @@ class TripAdvisorTabs:
             choice_code: Код для API запроса
             emoji: Эмодзи для кнопки
             description: Описание функции
+            report_type: Тип отчета для получения из состояния
         """
         st.markdown(f"### {emoji} {title}")
         st.markdown(f"*{description}*")
@@ -71,8 +76,8 @@ class TripAdvisorTabs:
         if st.button(button_text, key=button_key, use_container_width=True):
             self._handle_tripadvisor_request(choice_code, title)
         
-        # Отображение результатов
-        self._display_tripadvisor_results()
+        # Отображение результатов для конкретного типа
+        self._display_tripadvisor_results(report_type)
     
     def _handle_tripadvisor_request(self, choice_code: str, title: str):
         """
@@ -87,27 +92,31 @@ class TripAdvisorTabs:
             show_error_message("Сначала выберите жилье для анализа")
             return
         
-        # Запуск TripAdvisor сервера
+        # Запуск TripAdvisor сервера и получение данных
         session_manager = self._get_session_manager()
-        if not session_manager.start_tripadvisor_server():
-            return
         
-        # Получение данных
         with st.spinner(f"🌍 Ищу {title.lower()} через TripAdvisor..."):
             result = session_manager.get_tripadvisor_data(choice_code)
             
             if result:
-                st.session_state.trip_report = result
                 show_success_message("Данные от TripAdvisor получены!")
             else:
                 show_error_message("Не удалось получить данные от TripAdvisor")
     
-    def _display_tripadvisor_results(self):
-        """Отображение результатов от TripAdvisor"""
-        if st.session_state.get('trip_report'):
+    def _display_tripadvisor_results(self, report_type: str):
+        """
+        Отображение результатов от TripAdvisor для конкретного типа
+        
+        Args:
+            report_type: Тип отчета (restaurants, attractions, reviews, city)
+        """
+        session_manager = self._get_session_manager()
+        report_content = session_manager.get_tripadvisor_report(report_type)
+        
+        if report_content:
             # Отображение в красивом контейнере
             self.ui_helpers.render_report_container(
-                st.session_state.trip_report, 
+                report_content, 
                 "tripadvisor"
             )
     

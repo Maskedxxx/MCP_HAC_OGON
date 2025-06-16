@@ -73,7 +73,17 @@ class SearchForm:
             return
         
         st.markdown("---")
-        st.subheader("🧠 Что понял ИИ из вашего запроса")
+        
+        # Красивый заголовок с выделением
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 1rem 2rem; border-radius: 10px; margin: 1rem 0; 
+                    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+            <h3 style="color: white; margin: 0; text-align: center;">
+                🧠 Что понял ИИ из вашего запроса
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Основные параметры в метриках
         self._render_main_params(params_dict)

@@ -175,15 +175,24 @@ class UIHelpers:
     
     @staticmethod
     def render_report_container(content: str, container_type: str = "default"):
-        """Рендер контейнера для отчетов"""
-        container_class = {
-            "default": "report-container",
-            "tripadvisor": "tripadvisor-container",
-            "ai": "report-container"
-        }.get(container_type, "report-container")
-        
-        st.markdown(f"""
-        <div class="{container_class}">
-            {content.replace('\n', '<br>')}
-        </div>
-        """, unsafe_allow_html=True)
+        """Рендер контейнера для отчетов с поддержкой Markdown"""
+        if container_type == "ai":
+            # Для AI отчетов используем Markdown рендеринг
+            with st.container():
+                st.markdown("""
+                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #667eea; margin: 1rem 0;">
+                """, unsafe_allow_html=True)
+                st.markdown(content)  # Рендерим как Markdown
+                st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            # Для TripAdvisor отчетов оставляем как есть
+            container_class = {
+                "tripadvisor": "tripadvisor-container",
+                "default": "report-container"
+            }.get(container_type, "report-container")
+            
+            st.markdown(f"""
+            <div class="{container_class}">
+                {content.replace('\n', '<br>')}
+            </div>
+            """, unsafe_allow_html=True)

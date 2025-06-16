@@ -36,7 +36,13 @@ class SessionManager:
             st.session_state.selected_index = None
             st.session_state.search_location = ""
             st.session_state.report = ""
-            st.session_state.trip_report = ""
+            
+            # Разделенные TripAdvisor отчеты
+            st.session_state.trip_restaurants = ""
+            st.session_state.trip_attractions = ""
+            st.session_state.trip_reviews = ""
+            st.session_state.trip_city = ""
+            
             st.session_state.extracted_params = {}
             st.session_state.current_query = ""
             st.session_state.current_listing_data = None
@@ -129,7 +135,13 @@ class SessionManager:
             st.session_state.search_location = params.location
             st.session_state.selected_index = None
             st.session_state.report = ""
-            st.session_state.trip_report = ""
+            
+            # Очистка всех TripAdvisor отчетов
+            st.session_state.trip_restaurants = ""
+            st.session_state.trip_attractions = ""
+            st.session_state.trip_reviews = ""
+            st.session_state.trip_city = ""
+            
             st.session_state.current_listing_data = None
             
             if listings:
@@ -156,7 +168,13 @@ class SessionManager:
                     data, st.session_state.current_query
                 )
                 st.session_state.report = report
-                st.session_state.trip_report = ""
+                
+                # Очистка всех TripAdvisor отчетов при новом анализе
+                st.session_state.trip_restaurants = ""
+                st.session_state.trip_attractions = ""
+                st.session_state.trip_reviews = ""
+                st.session_state.trip_city = ""
+                
                 st.session_state.current_listing_data = data
                 
                 # Сдержанная анимация
@@ -186,7 +204,36 @@ class SessionManager:
             result = st.session_state.integrator.process_additional_info_request(
                 choice_code, st.session_state.current_listing_data
             )
+            
+            # Сохраняем результат в соответствующее поле
+            if choice_code == "1":  # Рестораны
+                st.session_state.trip_restaurants = result or ""
+            elif choice_code == "2":  # Достопримечательности
+                st.session_state.trip_attractions = result or ""
+            elif choice_code == "3":  # Город
+                st.session_state.trip_city = result or ""
+            elif choice_code == "4":  # Отзывы
+                st.session_state.trip_reviews = result or ""
+            
             return result or ""
         except Exception as e:
             st.error(f"❌ Ошибка TripAdvisor: {str(e)}")
             return ""
+    
+    def get_tripadvisor_report(self, report_type: str) -> str:
+        """
+        Получение конкретного TripAdvisor отчета
+        
+        Args:
+            report_type: Тип отчета (restaurants, attractions, reviews, city)
+            
+        Returns:
+            str: Содержимое отчета
+        """
+        report_map = {
+            "restaurants": st.session_state.get('trip_restaurants', ''),
+            "attractions": st.session_state.get('trip_attractions', ''),
+            "reviews": st.session_state.get('trip_reviews', ''),
+            "city": st.session_state.get('trip_city', '')
+        }
+        return report_map.get(report_type, '')
