@@ -119,43 +119,44 @@ class ListingAnalyzer:
         return city if city else "Kiev"
     
     def generate_ai_report(self, listing_data: Dict, user_request: str = "") -> str:
-        """
-        Генерация детального отчета с помощью ИИ
-        
-        Args:
-            listing_data: Полная информация о жилье
-            user_request: Оригинальный запрос пользователя для персонализации
-            
-        Returns:
-            str: Детальный отчет на русском языке
-        """
+        """Генерация детального отчета с помощью ИИ"""
         print(f"{EMOJIS['ai']} ИИ анализирует жилье и создает отчет...")
+        
+        # Предобработка данных
+        processed_data = self._preprocess_listing_data(listing_data)
         
         system_prompt = """Ты эксперт по недвижимости и туризму. Создай детальный отчет о жилье на Airbnb.
 
-        Структура отчета:
-        1. 🏠 ОБЩАЯ ИНФОРМАЦИЯ
-        2. ⭐ РЕЙТИНГ И ОТЗЫВЫ  
-        3. 💰 СТОИМОСТЬ И ЦЕННОСТЬ
-        4. 🏢 РАСПОЛОЖЕНИЕ
-        5. 🛏️ УДОБСТВА И ОСОБЕННОСТИ
-        6. ✅ ПЛЮСЫ
-        7. ⚠️ ВОЗМОЖНЫЕ МИНУСЫ
-        8. 🎯 ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ
+    Структура отчета:
+    1. 🏠 ОБЩАЯ ИНФОРМАЦИЯ
+    2. ⭐ РЕЙТИНГ И ОТЗЫВЫ  
+    3. 💰 СТОИМОСТЬ И ЦЕННОСТЬ
+    4. 🏢 РАСПОЛОЖЕНИЕ
+    5. 🛏️ УДОБСТВА И ОСОБЕННОСТИ
+    6. ✅ ПЛЮСЫ
+    7. ⚠️ ВОЗМОЖНЫЕ МИНУСЫ (УЧИТЫВАЯ ЗАПРОС ПОЛЬЗОВАТЕЛЯ)
+    8. 🎯 ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ
 
-        Пиши живым, понятным языком. Будь честным - указывай как плюсы, так и возможные недостатки. 
-        В рекомендациях учитывай запрос пользователя."""
+    Пиши живым, понятным языком. Будь честным - указывай как плюсы, так и возможные недостатки."""
 
-        user_prompt = f"""Проанализируй это жилье и создай детальный отчет:
+        user_prompt = f"""Проанализируй это жилье:
 
-        ДАННЫЕ О ЖИЛЬЕ:
-        <listing_data>
-        {json.dumps(listing_data, indent=2, ensure_ascii=False)}
-        </listing_data>
+    ОСНОВНАЯ ИНФОРМАЦИЯ:
+    • Название: {processed_data['name']}
+    • Рейтинг: {processed_data['rating']} 
+    • Цена: {processed_data['price_per_night']}/ночь
+    • Район: {processed_data['location']}
+    • Особенности: {processed_data['highlights']}
 
-        ЗАПРОС ПОЛЬЗОВАТЕЛЯ: {user_request if user_request else "Общий анализ"}
+    УДОБСТВА:
+    {processed_data['amenities_formatted']}
 
-        Создай подробный, честный отчет с рекомендациями."""
+    ПОЛИТИКИ:
+    {processed_data['policies']}
+
+    ЗАПРОС ПОЛЬЗОВАТЕЛЯ: {user_request}
+
+    Создай подробный отчет с учетом запроса пользователя."""
 
         try:
             response = self.client.chat.completions.create(
@@ -165,13 +166,99 @@ class ListingAnalyzer:
                     {"role": "user", "content": user_prompt}
                 ],
                 max_tokens=1500,
-                temperature=0.3  # Немного креативности, но в основном факты
+                temperature=0.3
             )
-            
             return response.choices[0].message.content
-            
         except Exception as e:
             return f"{EMOJIS['error']} Ошибка генерации отчета: {e}"
+
+    def _preprocess_listing_data(self, listing_data: Dict) -> Dict:
+        """Предобработка данных для более чистого промпта"""
+        basic = listing_data["basic"]
+        details = listing_data["details"]
+        
+        # Извлекаем ключевую информацию
+        processed = {
+            "name": basic["name"],
+            "rating": basic["rating"],
+            "price_per_night": self._extract_price_per_night(basic["price_info"]),
+            "location": self._get_location_info(details),
+            "highlights": self._get_highlights(details),
+            "amenities_formatted": self._format_amenities(details),
+            "policies": self._get_policies(details)
+        }
+        
+        return processed
+
+    def _extract_price_per_night(self, price_info: str) -> str:
+        """Извлекает цену за ночь"""
+        import re
+        match = re.search(r'\$(\d+)', price_info)
+        return f"${match.group(1)}" if match else "Цена не указана"
+
+    def _get_location_info(self, details) -> str:
+        """Получает информацию о локации"""
+        # Если details - словарь (реальные данные)
+        if isinstance(details, dict):
+            details_list = details.get("details", [])
+        else:
+            # Если details - список (фейковые данные)
+            details_list = details
+        
+        for detail in details_list:
+            if detail.get("id") == "LOCATION_DEFAULT":
+                return detail.get("subtitle", "")
+        return ""
+
+    def _get_highlights(self, details) -> str:
+        """Получает основные особенности"""
+        if isinstance(details, dict):
+            details_list = details.get("details", [])
+        else:
+            details_list = details
+        
+        for detail in details_list:
+            if detail.get("id") == "HIGHLIGHTS_DEFAULT":
+                return detail.get("highlights", "")
+        return ""
+
+    def _format_amenities(self, details) -> str:
+        """Форматирует удобства в читаемый список"""
+        if isinstance(details, dict):
+            details_list = details.get("details", [])
+        else:
+            details_list = details
+        
+        for detail in details_list:
+            if detail.get("id") == "AMENITIES_DEFAULT":
+                amenities_str = detail.get("seeAllAmenitiesGroups", "")
+                # Остальная логика без изменений
+                categories = amenities_str.split(", ")
+                formatted = []
+                
+                for item in categories:
+                    if ":" in item:
+                        current_category, first_amenity = item.split(":", 1)
+                        formatted.append(f"\n{current_category.strip()}:")
+                        if first_amenity.strip():
+                            formatted.append(f"  • {first_amenity.strip()}")
+                    else:
+                        formatted.append(f"  • {item.strip()}")
+                
+                return "".join(formatted)
+        return ""
+
+    def _get_policies(self, details) -> str:
+        """Получает политики заселения"""
+        if isinstance(details, dict):
+            details_list = details.get("details", [])
+        else:
+            details_list = details
+        
+        for detail in details_list:
+            if detail.get("id") == "POLICIES_DEFAULT":
+                return detail.get("houseRulesSections", "")
+        return ""
     
     def analyze_listing_full_cycle(self, listings: List[Dict], airbnb_client, 
                              user_request: str = "", search_location: str = "Kiev, Ukraine") -> str:

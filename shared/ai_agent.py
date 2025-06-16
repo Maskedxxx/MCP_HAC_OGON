@@ -4,6 +4,7 @@
 """
 
 import json
+from datetime import datetime
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
 from openai import OpenAI
@@ -71,6 +72,9 @@ class AIAgent:
         """
         print(f"{EMOJIS['ai']} {MESSAGES['parsing_request']}")
         
+        # Получаем текущую дату
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
         system_prompt = f"""Ты эксперт по поиску жилья на Airbnb. 
         
         Твоя задача - преобразовать запрос пользователя в структурированные параметры для поиска.
@@ -87,12 +91,51 @@ class AIAgent:
         4. Цены указывай в долларах без символа $
         5. Количество людей - только числа
 
-        Примеры:
-        - "в Киев на выходные" → location: "Kiev, Ukraine", остальное null
-        - "в Нью-Йорк с 15 июля по 20 июля для 3 человек" → location, checkin, checkout, adults
-        - "дешево до 30 долларов" → maxPrice: 30
-        всегда указывайте страну и город в формате "Город, Страна" ("Kiev, Ukraine" для Киева)
+        Примеры ответов в JSON формате:
+        
+        Запрос: "в Киев на выходные" 
+        {{
+            "location": "Kiev, Ukraine",
+            "checkin": null,
+            "checkout": null,
+            "adults": null,
+            "children": null,
+            "infants": null,
+            "pets": null,
+            "minPrice": null,
+            "maxPrice": null
+        }}
+        
+        Запрос: "в Нью-Йорк с 15 июля по 20 июля для 3 человек"
+        {{
+            "location": "New York, NY, USA",
+            "checkin": "2024-07-15",
+            "checkout": "2024-07-20",
+            "adults": 3,
+            "children": null,
+            "infants": null,
+            "pets": null,
+            "minPrice": null,
+            "maxPrice": null
+        }}
+        
+        Запрос: "дешево до 30 долларов"
+        {{
+            "location": "Kiev, Ukraine",
+            "checkin": null,
+            "checkout": null,
+            "adults": null,
+            "children": null,
+            "infants": null,
+            "pets": null,
+            "minPrice": null,
+            "maxPrice": 30
+        }}
+        
+        Всегда указывайте страну и город в формате "Город, Страна" НАПРИМЕР: ("Kiev, Ukraine" для Киева).
         """
+
+        user_prompt = f"Запрос пользователя: {user_request}\n\nТекущая дата: {current_date}"
 
         try:
             completion = self.client.beta.chat.completions.parse(
@@ -100,7 +143,7 @@ class AIAgent:
                 temperature=0,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_request}
+                    {"role": "user", "content": user_prompt}
                 ],
                 response_format=AirbnbSearchParams
             )

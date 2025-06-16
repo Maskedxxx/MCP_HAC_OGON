@@ -87,6 +87,57 @@ class Integrator:
         else:
             return None
     
+    def _get_enriched_places(self, places: List[Dict], place_type: str) -> List[Dict]:
+        """
+        Получение обогащенных данных с деталями для мест
+        
+        Args:
+            places: Список мест от TripAdvisor
+            place_type: Тип места для логирования
+            
+        Returns:
+            List[Dict]: Обогащенные места с описаниями
+        """
+        print(f"{EMOJIS['details']} Получаем детали {place_type} и фильтруем...")
+        enriched_places = []
+        
+        for i, place in enumerate(places, 1):
+            location_id = place.get('location_id')
+            name = place.get('name', 'N/A')
+            
+            print(f"  {i}. Получаю детали для: {name[:30]}...")
+            
+            if location_id:
+                try:
+                    details = self.tripadvisor_client.get_location_details(location_id)
+                    description = details.get('description', '')
+                    features = details.get('features', [])
+                    
+                    desc_len = len(description)
+                    features_count = len(features)
+                    
+                    if desc_len > 0:
+                        enriched_place = {
+                            **place,
+                            'description': description,
+                            'features': features
+                        }
+                        enriched_places.append(enriched_place)
+                        print(f"     ✅ Описание: {desc_len} символов, Особенности: {features_count}")
+                        
+                        if len(enriched_places) >= 5:
+                            break
+                    else:
+                        print("     ⏭️ Пропускаю - нет описания")
+                        
+                except Exception as e:
+                    print(f"     ❌ Ошибка получения деталей: {e}")
+            else:
+                print("     ⏭️ Пропускаю - нет location_id")
+        
+        print(f"   📊 Найдено {place_type} с описанием: {len(enriched_places)}")
+        return enriched_places
+    
     def _get_restaurants_analysis(self, lat: float, lon: float, location_name: str) -> str:
         """Анализ ресторанов рядом"""
         print(f"{EMOJIS['restaurant']} Ищу рестораны рядом с жильем...")
@@ -96,8 +147,13 @@ class Integrator:
         if not restaurants:
             return f"{EMOJIS['error']} Рестораны рядом не найдены"
         
+        enriched_restaurants = self._get_enriched_places(restaurants, "ресторанов")
+        
+        if not enriched_restaurants:
+            return f"{EMOJIS['error']} Рестораны с описанием не найдены"
+        
         return self._generate_tripadvisor_analysis(
-            restaurants[:5], 
+            enriched_restaurants, 
             "ресторанов", 
             f"рядом с жильем {location_name}"
         )
@@ -111,8 +167,13 @@ class Integrator:
         if not attractions:
             return f"{EMOJIS['error']} Достопримечательности рядом не найдены"
         
+        enriched_attractions = self._get_enriched_places(attractions, "достопримечательностей")
+        
+        if not enriched_attractions:
+            return f"{EMOJIS['error']} Достопримечательности с описанием не найдены"
+        
         return self._generate_tripadvisor_analysis(
-            attractions[:5], 
+            enriched_attractions, 
             "достопримечательностей", 
             f"рядом с жильем {location_name}"
         )
@@ -127,8 +188,13 @@ class Integrator:
         if not city_info:
             return f"{EMOJIS['error']} Информация о городе {city} не найдена"
         
+        enriched_city_info = self._get_enriched_places(city_info, "мест в городе")
+        
+        if not enriched_city_info:
+            return f"{EMOJIS['error']} Места в городе с описанием не найдены"
+        
         return self._generate_tripadvisor_analysis(
-            city_info[:7], 
+            enriched_city_info, 
             "мест в городе", 
             city
         )
@@ -342,13 +408,32 @@ class Integrator:
         return "\n\n".join(formatted)
     
     def _format_tripadvisor_data(self, data: List[Dict]) -> str:
-        """Форматирование данных TripAdvisor для ИИ"""
+        """Форматирование обогащенных данных TripAdvisor для ИИ"""
         formatted = []
         for i, item in enumerate(data, 1):
             name = item.get("name", "N/A")
             address = item.get("address_obj", {}).get("address_string", "N/A")
-            location_id = item.get("location_id", "N/A")
             
-            formatted.append(f"{i}. {name}\n   Адрес: {address}\n   ID: {location_id}")
+            # Новые поля с деталями
+            description = item.get("description", "")
+            features = item.get("features", [])
+            
+            # Базовая информация
+            entry = f"{i}. {name}\n   Адрес: {address}"
+            
+            # Добавляем описание если есть
+            if description:
+                # Обрезаем длинные описания
+                desc_short = description[:200] + "..." if len(description) > 200 else description
+                entry += f"\n   Описание: {desc_short}"
+            
+            # Добавляем особенности если есть
+            if features:
+                features_str = ", ".join(features[:5])  # Максимум 5 особенностей
+                entry += f"\n   Особенности: {features_str}"
+                if len(features) > 5:
+                    entry += f" (еще {len(features) - 5})"
+            
+            formatted.append(entry)
         
         return "\n\n".join(formatted)
