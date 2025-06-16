@@ -30,7 +30,7 @@ https://disk.yandex.ru/d/unduuuGcO39YPA
 ### 📄 Презентация проекта
 Детальная техническая презентация с архитектурой и возможностями:
 
-hhttps://drive.google.com/file/d/149wbgWT8xp7m6UH7yU3hgCL6hFd9SAJc/view?usp=sharing
+https://drive.google.com/file/d/149wbgWT8xp7m6UH7yU3hgCL6hFd9SAJc/view?usp=sharing
 
 > **Презентация включает:**
 > - Архитектуру системы
