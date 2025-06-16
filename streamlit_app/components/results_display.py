@@ -6,7 +6,7 @@
 import streamlit as st
 from typing import List, Dict, Callable
 from utils.ui_helpers import UIHelpers
-from config.streamlit_config import DISPLAY_CONFIG
+from app_config.streamlit_config import DISPLAY_CONFIG
 
 
 class ResultsDisplay:

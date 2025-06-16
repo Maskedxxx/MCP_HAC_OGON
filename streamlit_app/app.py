@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from components import SearchForm, ResultsDisplay, AIAnalysis, TripAdvisorTabs
 from utils import SessionManager, UIHelpers
-from config.streamlit_config import STREAMLIT_CONFIG
+from app_config.streamlit_config import STREAMLIT_CONFIG
 
 # Конфигурация страницы
 st.set_page_config(**STREAMLIT_CONFIG)

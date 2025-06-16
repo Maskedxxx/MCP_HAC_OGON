@@ -4,7 +4,7 @@
 """
 
 import streamlit as st
-from config.streamlit_config import EXAMPLE_QUERIES
+from app_config.streamlit_config import EXAMPLE_QUERIES
 
 
 class SearchForm:

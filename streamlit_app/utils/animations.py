@@ -5,7 +5,7 @@
 
 import streamlit as st
 import time
-from config.streamlit_config import ANIMATION_CONFIG
+from app_config.streamlit_config import ANIMATION_CONFIG
 
 
 def show_thinking_animation():

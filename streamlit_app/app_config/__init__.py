@@ -1,3 +1,4 @@
+# streamlit_app/app_config/__init__.py
 """
 Конфигурация Streamlit приложения
 """
