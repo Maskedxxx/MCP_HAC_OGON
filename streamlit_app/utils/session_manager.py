@@ -177,7 +177,7 @@ class SessionManager:
                 
                 st.session_state.current_listing_data = data
                 
-                # Сдержанная анимация
+                # Сдержанная анимация с сообщением о прокрутке
                 st.success("✅ AI анализ готов! Прокрутите вниз для просмотра отчета.")
                 
                 # Auto-scroll к анализу

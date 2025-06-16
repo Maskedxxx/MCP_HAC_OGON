@@ -49,18 +49,35 @@ class UIHelpers:
 
         /* Карточки результатов */
         .listing-card {
-            background: white;
-            border: 1px solid #e0e0e0;
+            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+            border: 2px solid #e0e6ed;
             border-radius: 15px;
             padding: 1.5rem;
             margin: 1rem 0;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
         }
 
         .listing-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+
+        /* Заголовки карточек */
+        .card-title {
+            background: linear-gradient(135deg, #17a2b8 0%, #769ba2 100%);
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .card-title h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
         }
 
         /* Кнопки */
@@ -177,17 +194,13 @@ class UIHelpers:
     def render_report_container(content: str, container_type: str = "default"):
         """Рендер контейнера для отчетов с поддержкой Markdown"""
         if container_type == "ai":
-            # Для AI отчетов используем Markdown рендеринг
+            # Для AI отчетов используем прямой Markdown рендеринг без HTML контейнера
             with st.container():
-                st.markdown("""
-                <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 10px; border-left: 4px solid #667eea; margin: 1rem 0;">
-                """, unsafe_allow_html=True)
-                st.markdown(content)  # Рендерим как Markdown
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown(content)  # Прямой рендеринг Markdown
         else:
             # Для TripAdvisor отчетов оставляем как есть
             container_class = {
-                "tripadvisor": "tripadvisor-container",
+                "tripadvisor": "tripadvisor-container", 
                 "default": "report-container"
             }.get(container_type, "report-container")
             

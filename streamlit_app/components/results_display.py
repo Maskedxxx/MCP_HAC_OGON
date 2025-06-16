@@ -124,11 +124,13 @@ class ResultsDisplay:
         """
         for idx, listing in enumerate(listings):
             self._render_single_card(idx, listing, perform_analysis_callback)
-            st.divider()
+            # Добавляем разделитель между карточками
+            if idx < len(listings) - 1:  # Не добавляем divider после последней карточки
+                st.markdown("<br>", unsafe_allow_html=True)
     
     def _render_single_card(self, idx: int, listing: Dict, perform_analysis_callback: Callable):
         """
-        Рендер одной карточки жилья
+        Рендер одной карточки жилья с красивым дизайном
         
         Args:
             idx: Индекс в списке
@@ -146,26 +148,35 @@ class ResultsDisplay:
         formatted_price = self.ui_helpers.format_price(price_details)
         rating_display = self.ui_helpers.extract_rating(rating_text)
         
-        # Создание карточки с уникальным ключом для стабильности
-        with st.container():
-            col1, col2 = st.columns([5, 1])
-            
-            with col1:
-                self._render_card_content(idx, name, formatted_price, rating_display, badges, url)
-            
-            with col2:
-                self._render_card_action(idx, perform_analysis_callback)
+        # Создание красивой карточки
+        # st.markdown('<div class="listing-card">', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([5, 1])
+        
+        with col1:
+            self._render_card_content(idx, name, formatted_price, rating_display, badges, url)
+        
+        with col2:
+            self._render_card_action(idx, perform_analysis_callback)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     def _render_card_content(self, idx: int, name: str, price: str, rating: str, badges: str, url: str):
-        """Рендер содержимого карточки"""
-        st.markdown(f"### {idx+1}. {name}")
+        """Рендер содержимого карточки с красивым заголовком"""
+        
+        # Красивый заголовок с CSS классом
+        st.markdown(f"""
+        <div class="card-title">
+            <h4>{idx+1}. {name}</h4>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Информационная строка
         info_parts = [rating, f"💰 {price}"]
         if badges:
             info_parts.append(f"🏆 {badges}")
         
-        st.markdown(self.ui_helpers.create_info_metrics(info_parts))
+        st.markdown(f"**{self.ui_helpers.create_info_metrics(info_parts)}**")
         
         # Ссылка на Airbnb
         if url:
@@ -176,5 +187,3 @@ class ResultsDisplay:
         st.markdown("<br>", unsafe_allow_html=True)  # Отступ
         if st.button("🔍 AI Анализ", key=f"analyze_{idx}", use_container_width=True):
             perform_analysis_callback(idx)
-            # Принудительное обновление интерфейса для избежания затуманенных карточек
-            st.rerun()
